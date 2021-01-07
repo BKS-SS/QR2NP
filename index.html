@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="content-language" content="ja" />
+  <title>QR2NortonProductkeys.</title>
+  <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script type="text/javascript" src="https://BCSSS.github.io/QR2Jump/jsQR/jsQRmin.js"></script>
+  <link href="https://fonts.googleapis.com/css?family=Ropa+Sans" rel="stylesheet">
+</head>
+
+<style type="text/css">
+  body {
+    position: relative;
+    max-width: 640px;
+    margin: 0 auto;
+    font-family: "Ropa Sans", sans-serif;
+    color: #333333;
+  }
+
+  #titleMsg {
+    position: left;
+    font-size: 60px;
+    font-weight: bold;
+    color: #2D99FF;
+  }
+
+  #githubLink {
+    position: absolute;
+    top: 12px;
+    right: 0;
+    color: #2D99FF;
+  }
+
+  #jsQRLink {
+    position: right;
+    color: #2D99FF;
+  }
+
+  #descMsg {
+    position: absolute;
+    font-size: 24px;
+    color: #2D99FF;
+  }
+
+  .tooltip {
+    margin: 100px 0 0;
+    list-style: none;
+  }
+
+  .tooltip li span {
+    position: absolute;
+    top: -85px;
+    left: 0;
+    z-index: 2;
+    display: none;
+    height: 45px;
+    padding: 6px 6px 6px 6px;
+    font-size: 12px;
+    text-align: center;
+    background: #FFFFCC;
+    border: 5px double #FFCC66;
+    border-radius: 10px 10px 10px 10px;
+  }
+
+  #loadingMessage {
+    padding: 40px;
+    text-align: center;
+    background-color: #EEEEEE;
+  }
+
+  #canvas {
+    width: 100%;
+  }
+
+  #output {
+    padding: 10px;
+    padding-bottom: 0;
+    margin-top: 20px;
+    background: #EEEEEE;
+  }
+
+  #output div {
+    padding-bottom: 10px;
+    word-wrap: break-word;
+  }
+
+  #noQRFound {
+    text-align: center;
+  }
+</style>
+
+<body>
+  <p>
+    <ul class="tooltip">
+      <li>
+          <a id="titleMsg" href="http://abehiroshi.la.coocan.jp/">QR2NortonProduct.</a>
+          <span>がんばれ！！<br>あべちゃん</span>
+      </li>
+    </ul>
+  </p>
+  <p>
+    <a id="githubLink" href="https://github.com/BCSSS/BCSSS.github.io">BCSSS Service Support Tool</a>
+    <a>ＱＲコードに含まれるノートンのプロダクトキーを見つけて表示します<br></a>
+    <a>Find and display the Norton product key contained in the QR code.</a>
+  </p>
+  <form name="myFORM">
+    <textarea name="myTEXT" rows="3"></textarea><br>
+  </form>
+  <div id="loadingMessage">🎥 Unable to access video stream (please make sure you have a webcam enabled)</div>
+  <canvas id="canvas" hidden></canvas>
+  <div id="output" hidden>
+    <div id="outputMessage">No QR code detected.</div>
+    <div hidden><b>Data:</b> <span id="outputData"></span></div>
+  </div>
+  <a id="jsQRLink" href="https://github.com/cozmo/jsQR">Powerd by cozmo. Pure JavaScript QR code decoding library.</a>
+
+  <script type="text/javascript">
+    var video = document.createElement("video");
+    var canvasElement = document.getElementById("canvas");
+    var canvas = canvasElement.getContext("2d");
+    var loadingMessage = document.getElementById("loadingMessage");
+    var outputContainer = document.getElementById("output");
+    var outputMessage = document.getElementById("outputMessage");
+    var outputData = document.getElementById("outputData");
+
+    var clipData = "";
+    var temp_codeData;
+
+    var regex_not_found = -1;
+    var regex_meta_str = /https?:\/\/.*pkproxy=([a-zA-Z0-9]{5})([a-zA-Z0-9]{5})([a-zA-Z0-9]{5})([a-zA-Z0-9]{5})([a-zA-Z0-9]{5})&.*/g;
+
+    function drawLine(begin, end, color) {
+      canvas.beginPath();
+      canvas.moveTo(begin.x, begin.y);
+      canvas.lineTo(end.x, end.y);
+      canvas.lineWidth = 4;
+      canvas.strokeStyle = color;
+      canvas.stroke();
+    }
+
+    // Use facingMode: environment to attemt to get the front camera on phones
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(function (stream) {
+      video.srcObject = stream;
+      video.setAttribute("playsinline", true); // required to tell iOS safari we don't want fullscreen
+      video.play();
+      requestAnimationFrame(tick);
+    });
+
+    function tick() {
+      loadingMessage.innerText = "⌛ Loading video..."
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        loadingMessage.hidden = true;
+        canvasElement.hidden = false;
+        outputContainer.hidden = false;
+
+        canvasElement.height = video.videoHeight;
+        canvasElement.width = video.videoWidth;
+        canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+        var imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+        var code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "dontInvert",
+        });
+        if (code) {
+          drawLine(code.location.topLeftCorner, code.location.topRightCorner, "#FF3B58");
+          drawLine(code.location.topRightCorner, code.location.bottomRightCorner, "#FF3B58");
+          drawLine(code.location.bottomRightCorner, code.location.bottomLeftCorner, "#FF3B58");
+          drawLine(code.location.bottomLeftCorner, code.location.topLeftCorner, "#FF3B58");
+          outputMessage.hidden = true;
+          outputData.parentElement.hidden = false;
+          outputData.innerText = code.data;
+//          console.log('code.data = [' + code.data + ']');
+          if (temp_codeData != code.data && code.data != "") {
+            temp_codeData = code.data;
+            clipData += code.data.replace(regex_meta_str, '$1-$2-$3-$4-$5') + "\n";
+            document.myFORM.myTEXT.value = clipData;
+            console.log('Clip = ' + copyTextToClipboard(clipData));
+            console.log('clipData = [' + clipData + ']');
+          }
+//          if (code.data.search(regex_meta_str) > regex_not_found) {
+//            console.log("Jump2URL [" + code.data.replace(regex_meta_str, '$1') + ']');
+//            window.open(code.data.replace(regex_meta_str, '$1'), '_blank');
+//          } else {
+//            console.log('URL Not Found.');
+//          }
+        } else {
+          outputMessage.hidden = false;
+          outputData.parentElement.hidden = true;
+        }
+      }
+      requestAnimationFrame(tick);
+    }
+
+    $(function () {
+      $(".tooltip a").hover(function () {
+        $(this).next("span").animate({ opacity: "show", top: "-75" }, "slow");
+      }, function () {
+        $(this).next("span").animate({ opacity: "hide", top: "-85" }, "fast");
+      });
+    });
+
+  function copyTextToClipboard(textVal) {
+    var copyFrom = document.createElement("textarea");
+    copyFrom.textContent = textVal;
+    var bodyElm = document.getElementsByTagName("body")[0];
+    bodyElm.appendChild(copyFrom);
+    copyFrom.select();
+    var retVal = document.execCommand('copy');
+    bodyElm.removeChild(copyFrom);
+    return retVal;
+  }
+  </script>
+</body>
+
+</html>
